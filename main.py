@@ -7,7 +7,7 @@ app = Flask(__name__)
 def get_live_m3u8_url():
     try:
         # 1. BURA HƏR DƏFƏ GİRDİYİN SAYTIN LİNKİNİ YAZIRSAN
-        target_url = "https://www.ornek-site.com/canli-tv-sehifesi" 
+        target_url = "https://live.itv.az/" 
         
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
