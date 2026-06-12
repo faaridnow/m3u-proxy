@@ -9,7 +9,7 @@ def get_live_m3u8_url():
     try:
         target_url = "https://live.itv.az/" 
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
             'Referer': 'https://live.itv.az/'
         }
         response = requests.get(target_url, headers=headers, timeout=10)
@@ -31,19 +31,46 @@ def get_live_m3u8_url():
 def home():
     return "İTV Server Tam Aktivdir!"
 
-# YENİ PROXY METODU (Yönləndirməsiz birbaşa yayım)
 @app.route('/kanal.m3u8')
 def proxy_m3u8():
     real_url = get_live_m3u8_url()
     try:
-        # İTV-nin yayımını bizim server arxa fonda çəkir
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        res = requests.get(real_url, headers=headers, stream=True, timeout=10)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'Referer': 'https://live.itv.az/'
+        }
+        res = requests.get(real_url, headers=headers, timeout=10)
         
-        # İçindəki mətni SSIPTV-yə olduğu kimi canlı ötürürük
-        return Response(res.text, mimetype='application/x-mpegURL')
+        if res.status_code == 200:
+            lines = res.text.splitlines()
+            rewritten_lines = []
+            base_url = "https://live.itv.az/"
+            
+            for line in lines:
+                line = line.strip()
+                if line:
+                    # Faylın içindəki qısa linkləri bütöv İTV linkinə çeviririk
+                    if not line.startswith('#') and not line.startswith('http'):
+                        if line.startswith('/'):
+                            line = "https://live.itv.az" + line
+                        else:
+                            line = base_url + line
+                    # Teqlərin daxilində gizlənən digər keçidləri düzəldirik
+                    elif line.startswith('#') and 'URI=' in line:
+                        line = line.replace('URI="', 'URI="https://live.itv.az/')
+                        line = line.replace('URI=\'', 'URI=\'https://live.itv.az/')
+                rewritten_lines.append(line)
+            
+            output = "\n".join(rewritten_lines)
+            
+            # Smart TV-lər (LG/Samsung) üçün CORS icazə başlıqlarını əlavə edirik
+            response = Response(output, mimetype='application/x-mpegURL')
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
     except Exception as e:
-        return f"Yayım çəkilə bilmədi: {e}", 500
+        print(f"Proxy xətası: {e}")
+    
+    return "Yayım tapılmadı", 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
