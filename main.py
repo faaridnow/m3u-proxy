@@ -25,26 +25,33 @@ def get_live_m3u8_url():
     except Exception as e:
         print(f"Xəta: {e}")
     
+    # Əgər skript hansısa saniyədə linki tapa bilməsə, SSIPTV-nin 100% açdığı bu linki ötürür
     return "https://live.itv.az/itv.m3u8?bandwidth=3900&shift=0"
 
 @app.route('/')
 def home():
-    return "Server Aktivdir! Pleyerə /playlist.m3u linkini əlavə edin."
+    return "Server Tam Aktivdir! /kanal.m3u8 istifadə edin."
 
-# YENİ METOD: Dinamik Pleylist Yaradıcısı
-@app.route('/playlist.m3u')
-def generate_playlist():
-    # Arxa fonda gedib ən təzə linki tapır
-    real_url = get_live_m3u8_url()
+# 100% SSIPTV UYĞUNLUQLU MASTER PLAYLIST ENDPOINTI
+@app.route('/kanal.m3u8')
+def hls_master_playlist():
+    # Arxa fonda dinamik olaraq İTV-nin ən son buraxdığı linki çəkirik
+    real_m3u8_url = get_live_m3u8_url()
     
-    # Pleyerlərin (SSIPTV, VLC) 100% tanıdığı siyahı formatını hazırlayır
-    m3u_content = f"""#EXTM3U
-#EXTINF:-1 tvg-id="itv" tvg-name="İTV" group-title="Azərbaycan", İctimai TV
-{real_url}
+    # Standart HLS (M3U8) Master pleylist strukturu qururuq.
+    # Burada link bütöv olduğu üçün SSIPTV bütün video parçalarını İTV-nin özündən rəsmi olaraq çəkəcək.
+    master_content = f"""#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-STREAM-INF:BANDWIDTH=3900000,RESOLUTION=1920x1080,NAME="İTV HD"
+{real_m3u8_url}
 """
     
-    # Siyahını pleyerə mətn faylı kimi təhvil verir
-    return Response(m3u_content, mimetype='audio/x-mpegurl')
+    # Şifrələməni və CORS icazələrini təyin edirik (Smart TV-lərin təhlükəsizlik divarını qırmaq üçün)
+    response = Response(master_content, mimetype='application/x-mpegURL')
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = '*'
+    return response
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
