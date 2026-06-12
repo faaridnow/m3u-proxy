@@ -29,48 +29,22 @@ def get_live_m3u8_url():
 
 @app.route('/')
 def home():
-    return "İTV Server Tam Aktivdir!"
+    return "Server Aktivdir! Pleyerə /playlist.m3u linkini əlavə edin."
 
-@app.route('/kanal.m3u8')
-def proxy_m3u8():
+# YENİ METOD: Dinamik Pleylist Yaradıcısı
+@app.route('/playlist.m3u')
+def generate_playlist():
+    # Arxa fonda gedib ən təzə linki tapır
     real_url = get_live_m3u8_url()
-    try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            'Referer': 'https://live.itv.az/'
-        }
-        res = requests.get(real_url, headers=headers, timeout=10)
-        
-        if res.status_code == 200:
-            lines = res.text.splitlines()
-            rewritten_lines = []
-            base_url = "https://live.itv.az/"
-            
-            for line in lines:
-                line = line.strip()
-                if line:
-                    # Faylın içindəki qısa linkləri bütöv İTV linkinə çeviririk
-                    if not line.startswith('#') and not line.startswith('http'):
-                        if line.startswith('/'):
-                            line = "https://live.itv.az" + line
-                        else:
-                            line = base_url + line
-                    # Teqlərin daxilində gizlənən digər keçidləri düzəldirik
-                    elif line.startswith('#') and 'URI=' in line:
-                        line = line.replace('URI="', 'URI="https://live.itv.az/')
-                        line = line.replace('URI=\'', 'URI=\'https://live.itv.az/')
-                rewritten_lines.append(line)
-            
-            output = "\n".join(rewritten_lines)
-            
-            # Smart TV-lər (LG/Samsung) üçün CORS icazə başlıqlarını əlavə edirik
-            response = Response(output, mimetype='application/x-mpegURL')
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            return response
-    except Exception as e:
-        print(f"Proxy xətası: {e}")
     
-    return "Yayım tapılmadı", 500
+    # Pleyerlərin (SSIPTV, VLC) 100% tanıdığı siyahı formatını hazırlayır
+    m3u_content = f"""#EXTM3U
+#EXTINF:-1 tvg-id="itv" tvg-name="İTV" group-title="Azərbaycan", İctimai TV
+{real_url}
+"""
+    
+    # Siyahını pleyerə mətn faylı kimi təhvil verir
+    return Response(m3u_content, mimetype='audio/x-mpegurl')
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
